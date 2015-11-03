@@ -9,6 +9,8 @@ maintainer:          satisfied@monoid.al
 copyright:           Joe Hermaszwski 2015
 category:            Language
 build-type:          Simple
+extra-source-files:
+  .gitignore
 cabal-version:       >=1.10
 
 library
