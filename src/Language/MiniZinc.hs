@@ -1,3 +1,5 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -6,7 +8,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Language.MiniZinc
   ( MZ
@@ -22,6 +27,7 @@ module Language.MiniZinc
 
   , (/=:)
   , (==:)
+  , (>:)
   , show'
 
   , Expression
@@ -32,7 +38,8 @@ module Language.MiniZinc
 
 import Control.Monad.Writer.Strict
 import Data.DList as D
-import GHC.Exts(IsList(..))
+import Data.HList(HList(..))
+import GHC.Exts(IsList(..), Constraint)
 import Data.Function(on)
 import Data.Functor.Identity(Identity, runIdentity)
 import Data.String(IsString, fromString)
@@ -87,6 +94,9 @@ data MiniZincType = Bool
                   | String
                   | Array MiniZincType
 
+data Function (c :: Constraint) (arguments :: [MiniZincType])
+              (ret :: MiniZincType) = Function Text
+
 class Lit a (b :: MiniZincType) | a -> b where
   reifyLit :: a -> S.Expr
 
@@ -105,14 +115,14 @@ instance Lit String 'String where
 data Expression :: MiniZincType -> * where
   Lit   :: Lit a b => a -> Expression b
   Var   :: Text -> Expression a
-  BinOp :: BinaryOperator a b c -> Expression a -> Expression b -> Expression c
   ArrayExpr :: [Expression a] -> Expression ('Array a)
-  UnaryFunctionCall :: UnaryFunction a b -> Expression a -> Expression b
+  App :: (ReifyHList (HList (Map Expression as)), c)
+         => Function c as r -> HList (Map Expression as) -> Expression r
 
 instance Num (Expression 'Int) where
-  (+) = BinOp (BinaryOperator "+")
-  (-) = BinOp (BinaryOperator "-")
-  (*) = BinOp (BinaryOperator "*")
+  (+) = call (Function "'+'" :: '[ 'Int, 'Int] --> 'Int)
+  (-) = call (Function "'-'" :: '[ 'Int, 'Int] --> 'Int)
+  (*) = call (Function "'*'" :: '[ 'Int, 'Int] --> 'Int)
   negate = error "Expression negate"
   abs = error "Expression abs"
   signum = error "Expression signum"
@@ -125,12 +135,6 @@ instance IsList (Expression ('Array t)) where
   type Item (Expression ('Array t)) = Expression t
   fromList = ArrayExpr
   toList = error "toList Expression"
-
-data BinaryOperator (a :: MiniZincType) (b :: MiniZincType) (c :: MiniZincType)
-  = BinaryOperator Text
-
-data UnaryFunction (a :: MiniZincType) (b :: MiniZincType)
-  = UnaryFunction Text
 
 class Optimizable (a :: MiniZincType)
 instance Optimizable 'Int
@@ -147,13 +151,14 @@ data SolveType where
 -- Operators and functions in the language
 --
 
-infix 4 ==:, /=:
-(/=:), (==:) :: Expression a -> Expression a -> Expression 'Bool
-(/=:) = BinOp (BinaryOperator "!=")
-(==:) = BinOp (BinaryOperator "==")
+infix 4 ==:, /=:, >:
+(/=:), (==:), (>:) :: Expression a -> Expression a -> Expression 'Bool
+(/=:) = call (Function "'!='" :: '[a,a] --> 'Bool)
+(==:) = call (Function "'=='" :: '[a,a] --> 'Bool)
+(>:) = call (Function "'>'" :: '[a,a] --> 'Bool)
 
-show' :: Expression a -> Expression 'String
-show' = UnaryFunctionCall (UnaryFunction "show")
+show' :: Range a => Expression a -> Expression 'String
+show' = call (Function "show" :: '[a] --> 'String)
 
 --
 -- Converting it into the unsafe syntax version
@@ -162,11 +167,17 @@ show' = UnaryFunctionCall (UnaryFunction "show")
 reifyExpression :: Expression a -> S.Expr
 reifyExpression (Lit l) = reifyLit l
 reifyExpression (Var n) = S.Ident n
-reifyExpression (BinOp (BinaryOperator op) l r) =
-  S.BinOpExpr (S.binOpFromText op) (reifyExpression l) (reifyExpression r)
 reifyExpression (ArrayExpr es) = S.ArrayExpr (reifyExpression <$> es)
-reifyExpression (UnaryFunctionCall (UnaryFunction f) x) = S.CallExpr f [reifyExpression x]
+reifyExpression (App (Function f) es) = S.CallExpr f (reifyHExpressions es)
 
+class ReifyHList a where
+  reifyHExpressions :: a -> [S.Expr]
+
+instance ReifyHList (HList '[]) where
+  reifyHExpressions HNil = []
+
+instance ReifyHList (HList as) => ReifyHList (HList (Expression a ': as)) where
+  reifyHExpressions (HCons x xs) = reifyExpression x : reifyHExpressions xs
 
 --
 -- Some utlilities for dealing with the monad
@@ -184,3 +195,36 @@ tellSolve s = tell (singleton (S.ASolve s))
 tellOutput :: Monad m => S.Output -> MZT m ()
 tellOutput o = tell (singleton (S.AnOutput o))
 
+--
+-- Some type tricks to make calling functions a little nicer
+--
+
+infix 1 -->
+infixr 0 ==>
+
+type as --> r = Function () as r
+
+type family (==>) (c :: Constraint) (f :: *) :: * where
+  c ==> Function c' as r = Function (c, c') as r
+
+
+call :: (HCall (Map Expression as), ReifyHList (HList (Map Expression as)), c)
+        => Function c as r -> ExpandFunction (Map Expression as) (Expression r)
+call f = hCall (App f)
+
+class HCall as where
+  hCall :: (HList as -> r) -> ExpandFunction as r
+
+instance HCall '[] where
+  hCall f = f HNil
+
+instance HCall as => HCall (a ': as) where
+  hCall f x = hCall (\xs -> f (x `HCons` xs))
+
+type family Map (f :: a -> b) (xs :: [a]) :: [b] where
+  Map f '[] = '[]
+  Map f (x ': xs) = f x ': Map f xs
+
+type family ExpandFunction (arguments :: [*]) (ret :: *) :: * where
+  ExpandFunction '[] r = r
+  ExpandFunction (a ': as) r = a -> ExpandFunction as r

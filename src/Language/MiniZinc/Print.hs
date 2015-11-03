@@ -84,12 +84,8 @@ commaSeparated :: [Doc] -> Doc
 commaSeparated = mconcat . intersperse ","
 
 binOpDoc :: BinOp -> Doc
-binOpDoc Add = "+"
-binOpDoc Subtract = "-"
-binOpDoc Multiply = "*"
-binOpDoc NEq = "!="
+binOpDoc = text . fst . binOpInfo
 
 unOpDoc :: UnOp -> Doc
-unOpDoc Positive = "+"
-unOpDoc Negative = "-"
+unOpDoc = text . unOpName
 
