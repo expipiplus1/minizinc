@@ -4,7 +4,6 @@
 
 module Main where
 
-import Data.Text()
 import qualified Data.Text.Lazy.IO as T
 import Language.MiniZinc
 import Language.MiniZinc.Syntax(Model)
