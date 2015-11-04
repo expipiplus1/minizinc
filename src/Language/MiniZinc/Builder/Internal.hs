@@ -28,6 +28,9 @@ module Language.MiniZinc.Builder.Internal
   , (>:)
   , show'
 
+  , true
+  , false
+
   , Expression
   , SolveType(..)
 
@@ -157,6 +160,10 @@ infix 4 ==:, /=:, >:
 
 show' :: Range a => Expression a -> Expression 'String
 show' = call (Function "show" :: '[a] --> 'String)
+
+true, false :: Expression 'Bool
+true = Lit True
+false = Lit False
 
 --
 -- Converting it into the unsafe syntax version

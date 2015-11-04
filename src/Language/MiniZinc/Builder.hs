@@ -15,6 +15,9 @@ module Language.MiniZinc.Builder
   , (>:)
   , show'
 
+  , true
+  , false
+
   , Expression
   , SolveType(..)
 
