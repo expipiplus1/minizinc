@@ -9,8 +9,6 @@ import Language.MiniZinc
 import Language.MiniZinc.Syntax(Model)
 import Language.MiniZinc.Print(modelText)
 
-default (Expression 'Int)
-
 main :: IO ()
 main = T.putStrLn (modelText aust)
 
