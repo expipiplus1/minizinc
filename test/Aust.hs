@@ -11,14 +11,14 @@ import Language.MiniZinc.Syntax(Model)
 
 aust :: Model
 aust = runMZ $
-  do nc <- parameter "nc" (3 :: Expression 'Int)
-     wa  <- boundedVar "wa"  1 nc
-     nt  <- boundedVar "nt"  1 nc
-     sa  <- boundedVar "sa"  1 nc
-     q   <- boundedVar "q"   1 nc
-     nsw <- boundedVar "nsw" 1 nc
-     v   <- boundedVar "v"   1 nc
-     t   <- boundedVar "t"   1 nc
+  do nc <- parameter (3 :: Expression 'Int)
+     wa  <- boundedVar 1 nc
+     nt  <- boundedVar 1 nc
+     sa  <- boundedVar 1 nc
+     q   <- boundedVar 1 nc
+     nsw <- boundedVar 1 nc
+     v   <- boundedVar 1 nc
+     t   <- boundedVar 1 nc
      constraint (wa  /=: nt)
      constraint (wa  /=: sa)
      constraint (nt  /=: sa)

@@ -37,7 +37,7 @@ module Language.MiniZinc.Builder.Internal
   , MiniZincType(..)
   ) where
 
-import Control.Monad.Writer.Strict
+import Control.Monad.RWS.Strict
 import Data.DList as D
 import Data.HList(HList(..))
 import GHC.Exts(IsList(..), Constraint)
@@ -47,7 +47,11 @@ import Data.String(IsString, fromString)
 import Data.Text.Lazy(Text, pack)
 import qualified Language.MiniZinc.Syntax as S
 
-type MZT = WriterT (DList S.Item)
+--
+-- The monad for constructing minizinc source
+--
+
+type MZT = RWST () (DList S.Item) MZState
 
 type MZ = MZT Identity
 
@@ -56,22 +60,35 @@ runMZ = runIdentity . runMZT
 
 runMZT :: Monad m => MZT m () -> m S.Model
 runMZT mz =
-  do (_, is) <- runWriterT mz
+  do (_, is) <- execRWST mz () initialMZState
      pure (S.Model (D.toList is))
+
+data MZState = MZState {nextId :: Int}
+
+initialMZState :: MZState
+initialMZState = MZState {nextId = 0}
+
+getName :: Monad m => MZT m Text
+getName =
+  do i <- gets nextId
+     modify' (\s -> s {nextId = i+1})
+     pure ("v" <> pack (show i))
 
 --
 -- Functions for creating top level items
 --
 
-parameter :: Monad m => Text -> Expression a -> MZT m (Expression a)
-parameter name value =
-  do tellVarDecl (S.VarDecl (S.Type S.Par S.Int) name (Just (reifyExpression value)))
+parameter :: Monad m => Expression a -> MZT m (Expression a)
+parameter value =
+  do name <- getName
+     tellVarDecl (S.VarDecl (S.Type S.Par S.Int) name (Just (reifyExpression value)))
      pure (Var name)
 
 boundedVar :: (Monad m, Range a)
-           => Text -> Expression a -> Expression a -> MZT m (Expression a)
-boundedVar name lb ub =
-  do let type' = S.Type S.Var ((S.Bounded `on` reifyExpression) lb ub)
+           => Expression a -> Expression a -> MZT m (Expression a)
+boundedVar lb ub =
+  do name <- getName
+     let type' = S.Type S.Var ((S.Bounded `on` reifyExpression) lb ub)
      tellVarDecl (S.VarDecl type' name Nothing)
      pure (Var name)
 
