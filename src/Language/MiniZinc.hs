@@ -113,9 +113,9 @@ instance Lit String 'String where
   reifyLit = S.LitString . pack
 
 data Expression :: MiniZincType -> * where
-  Lit   :: Lit a b => a -> Expression b
-  Var   :: Text -> Expression a
-  ArrayExpr :: [Expression a] -> Expression ('Array a)
+  Lit :: Lit a b => a -> Expression b
+  Var :: Text -> Expression a
+  Arr :: [Expression a] -> Expression ('Array a)
   App :: (ReifyHList (HList (Map Expression as)), c)
          => Function c as r -> HList (Map Expression as) -> Expression r
 
@@ -133,7 +133,7 @@ instance IsString (Expression 'String) where
 
 instance IsList (Expression ('Array t)) where
   type Item (Expression ('Array t)) = Expression t
-  fromList = ArrayExpr
+  fromList = Arr
   toList = error "toList Expression"
 
 class Optimizable (a :: MiniZincType)
@@ -167,7 +167,7 @@ show' = call (Function "show" :: '[a] --> 'String)
 reifyExpression :: Expression a -> S.Expr
 reifyExpression (Lit l) = reifyLit l
 reifyExpression (Var n) = S.Ident n
-reifyExpression (ArrayExpr es) = S.ArrayExpr (reifyExpression <$> es)
+reifyExpression (Arr es) = S.ArrayExpr (reifyExpression <$> es)
 reifyExpression (App (Function f) es) = S.CallExpr f (reifyHExpressions es)
 
 class ReifyHList a where
