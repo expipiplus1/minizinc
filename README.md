@@ -11,6 +11,7 @@ There's plenty of MiniZinc constructs not implemented yet; this includes
 - Annotations
 - Custom functions
 - Sets
+- Different solvers (currently only uses mzn-g12fd)
 
 Please create an issue if there's some feature you want which isn't
 implemented, or better yet submit a pull request.

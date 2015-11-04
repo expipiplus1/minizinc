@@ -49,7 +49,7 @@ library
   ghc-options:
     -Wall
 
-test-suite aust
+test-suite test
   default-language:
     Haskell2010
   type:
@@ -57,10 +57,15 @@ test-suite aust
   hs-source-dirs:
     test
   main-is:
-    Aust.hs
+    Test.hs
   build-depends:
-    base >= 4 && <5,
+    base >=4 && <5,
+    minizinc,
+    mtl >=2.0 && <2.3,
+    tasty >=0.10 && <0.12,
+    tasty-th >=0.1 && <0.2,
+    tasty-hunit >=0.9 && <0.10,
     text >=1.2 && <1.3,
-    minizinc
+    transformers >=0.4 && <0.5
   ghc-options:
     -Wall -threaded

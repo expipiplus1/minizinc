@@ -2,15 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedLists #-}
 
-module Main where
+module Aust
+  ( aust
+  ) where
 
-import qualified Data.Text.Lazy.IO as T
 import Language.MiniZinc.Builder
 import Language.MiniZinc.Syntax(Model)
-import Language.MiniZinc.Print(modelText)
-
-main :: IO ()
-main = T.putStrLn (modelText aust)
 
 aust :: Model
 aust = runMZ $
