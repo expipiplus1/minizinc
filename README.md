@@ -27,7 +27,7 @@ tutorial][tute]
 
 module Aust(aust) where
 
-import Language.MiniZinc
+import Language.MiniZinc.Builder
 import Language.MiniZinc.Syntax(Model)
 
 aust :: Model

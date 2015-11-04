@@ -11,7 +11,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Language.MiniZinc
+module Language.MiniZinc.Builder.Internal
   ( MZ
   , MZT
   , runMZ

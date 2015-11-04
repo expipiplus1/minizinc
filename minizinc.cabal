@@ -17,7 +17,8 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:
-    Language.MiniZinc
+    Language.MiniZinc.Builder
+    Language.MiniZinc.Builder.Internal
     Language.MiniZinc.Print
     Language.MiniZinc.Syntax
   other-extensions:
