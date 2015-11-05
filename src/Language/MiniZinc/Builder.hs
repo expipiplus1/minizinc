@@ -6,6 +6,7 @@ module Language.MiniZinc.Builder
 
   , parameter
   , boundedVar
+  , boundedVarArray
   , constraint
   , solve
   , output
@@ -14,6 +15,7 @@ module Language.MiniZinc.Builder
   , (==:)
   , (>:)
   , show'
+  , (!)
 
   , true
   , false

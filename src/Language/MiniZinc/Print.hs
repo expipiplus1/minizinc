@@ -47,7 +47,7 @@ typeDoc (Type vp baseType) = varOrParDoc vp <+> baseTypeDoc baseType
 
 varOrParDoc :: VarOrPar -> Doc
 varOrParDoc Var = "var"
-varOrParDoc Par = "par"
+varOrParDoc Par = ""
 
 baseTypeDoc :: BaseType -> Doc
 baseTypeDoc Bool = "bool"
@@ -56,8 +56,8 @@ baseTypeDoc Float = "float"
 baseTypeDoc String = "string"
 baseTypeDoc Ann = "ann"
 baseTypeDoc (Array indices t) =
-  "array" <+> brackets (commaSeparated (baseTypeDoc <$> indices)) <+>
-  "of" <> typeDoc t
+  "array" <> brackets (commaSeparated (baseTypeDoc <$> indices)) <+>
+  "of" <+> typeDoc t
 baseTypeDoc (Opt baseType) = "opt" <+> baseTypeDoc baseType
 baseTypeDoc (Bounded lb ub) = exprDoc lb <> ".." <> exprDoc ub
 
@@ -72,6 +72,8 @@ exprPrecDoc _ (LitInt i) = integer i
 exprPrecDoc _ (LitBool b) = if b then "true" else "false"
 exprPrecDoc _ (LitString s) = fromString (show s)
 exprPrecDoc _ (ArrayExpr es) = brackets $ commaSeparated (exprDoc <$> es)
+exprPrecDoc _ (ArrayIndex a is) = exprPrecDoc 800 a <>
+                                  brackets (commaSeparated (exprDoc <$> is))
 exprPrecDoc p (BinOpExpr op l r) = let p' = opPrecedence op
                                        s = exprPrecDoc p' l <+> binOpDoc op <+>
                                            exprPrecDoc p' r

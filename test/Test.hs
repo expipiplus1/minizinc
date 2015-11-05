@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -6,7 +7,9 @@ module Main
   ) where
 
 import Aust
+import Sudoku
 import Control.Monad.Except(runExceptT)
+import Data.Array(listArray)
 import Language.MiniZinc
 import Language.MiniZinc.Builder
 import Test.Tasty.TH(defaultMainGenerator)
@@ -37,6 +40,15 @@ assertError m =
 
 case_aust :: Assertion
 case_aust = assertSat aust
+
+case_linearSudoku1 :: Assertion
+case_linearSudoku1 = let p = listArray (1, 6) [Nothing, Nothing, Nothing,
+                                               Nothing, Nothing, Nothing]
+                     in assertSat (linearSudoku p)
+
+case_linearSudoku2 :: Assertion
+case_linearSudoku2 = let p = listArray (1, 2) [Just 1, Just 1]
+                     in assertUnsat (linearSudoku p)
 
 case_unsat :: Assertion
 case_unsat = assertUnsat . runMZ $

@@ -34,6 +34,7 @@ library
     TypeFamilies
   build-depends:
     base >=4.8 && <4.9,
+    array >=0.5 && <0.6,
     dlist >=0.7 && <0.8,
     HList >=0.4 && <0.5,
     mtl >=2.0 && <2.3,
@@ -58,8 +59,12 @@ test-suite test
     test
   main-is:
     Test.hs
+  other-modules:
+    Aust
+    Sudoku
   build-depends:
     base >=4 && <5,
+    array >=0.5 && <0.6,
     minizinc,
     mtl >=2.0 && <2.3,
     tasty >=0.10 && <0.12,

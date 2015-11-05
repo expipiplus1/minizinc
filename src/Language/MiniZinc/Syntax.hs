@@ -44,6 +44,7 @@ data Expr = Ident Text
           | LitBool Bool
           | LitString Text
           | ArrayExpr [Expr]
+          | ArrayIndex Expr [Expr]
           | BinOpExpr BinOp Expr Expr
           | UnOpExpr UnOp Expr
           | CallExpr Text [Expr]

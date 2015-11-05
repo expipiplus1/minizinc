@@ -19,6 +19,7 @@ module Language.MiniZinc.Builder.Internal
 
   , parameter
   , boundedVar
+  , boundedVarArray
   , constraint
   , solve
   , output
@@ -27,6 +28,7 @@ module Language.MiniZinc.Builder.Internal
   , (==:)
   , (>:)
   , show'
+  , (!)
 
   , true
   , false
@@ -92,6 +94,17 @@ boundedVar lb ub =
      tellVarDecl (S.VarDecl type' name Nothing)
      pure (Var name)
 
+boundedVarArray :: (Monad m, Range i, Range e)
+         => (Expression i, Expression i) -> (Expression e, Expression e)
+         -> MZT m (Expression ('Array '[i] e))
+boundedVarArray (ilb, iub) (elb, eub) =
+  do name <- getName
+     let elemType = S.Type S.Var ((S.Bounded `on` reifyExpression) elb eub)
+         indexType = (S.Bounded `on` reifyExpression) ilb iub
+         type' = S.Type S.Par (S.Array [indexType] elemType)
+     tellVarDecl (S.VarDecl type' name Nothing)
+     pure (Var name)
+
 constraint :: Monad m => Expression 'Bool -> MZT m ()
 constraint c = tellConstraint (S.Constraint (reifyExpression c))
 
@@ -136,6 +149,7 @@ data Expression :: MiniZincType -> * where
   Arr :: [Expression a] -> Expression ('Array i a)
   App :: (ReifyHList (HList (Map Expression as)), c)
          => Function c as r -> HList (Map Expression as) -> Expression r
+  ArrIndex :: Expression ('Array '[i] e) -> Expression i -> Expression e
 
 instance Num (Expression 'Int) where
   (+) = call (Function "'+'" :: '[ 'Int, 'Int] --> 'Int)
@@ -182,6 +196,11 @@ true, false :: Expression 'Bool
 true = Lit True
 false = Lit False
 
+infixl 9 !
+
+(!) :: Expression ('Array '[i] e) -> Expression i -> Expression e
+(!) = ArrIndex
+
 --
 -- Converting it into the unsafe syntax version
 --
@@ -191,6 +210,8 @@ reifyExpression (Lit l) = reifyLit l
 reifyExpression (Var n) = S.Ident n
 reifyExpression (Arr es) = S.ArrayExpr (reifyExpression <$> es)
 reifyExpression (App (Function f) es) = S.CallExpr f (reifyHExpressions es)
+reifyExpression (ArrIndex a i) = S.ArrayIndex (reifyExpression a)
+                                              [reifyExpression i]
 
 class ReifyHList a where
   reifyHExpressions :: a -> [S.Expr]
