@@ -100,7 +100,7 @@ solve Satisfy = tellSolve S.Satisfy
 solve (Minimize e) = tellSolve (S.Minimize (reifyExpression e))
 solve (Maximize e) = tellSolve (S.Maximize (reifyExpression e))
 
-output :: Monad m => Expression ('Array 'String) -> MZT m ()
+output :: Monad m => Expression ('Array '[i] 'String) -> MZT m ()
 output o = tellOutput (S.Output (reifyExpression o))
 
 --
@@ -110,7 +110,7 @@ output o = tellOutput (S.Output (reifyExpression o))
 data MiniZincType = Bool
                   | Int
                   | String
-                  | Array MiniZincType
+                  | Array [MiniZincType] MiniZincType
 
 data Function (c :: Constraint) (arguments :: [MiniZincType])
               (ret :: MiniZincType) = Function Text
@@ -133,7 +133,7 @@ instance Lit String 'String where
 data Expression :: MiniZincType -> * where
   Lit :: Lit a b => a -> Expression b
   Var :: Text -> Expression a
-  Arr :: [Expression a] -> Expression ('Array a)
+  Arr :: [Expression a] -> Expression ('Array i a)
   App :: (ReifyHList (HList (Map Expression as)), c)
          => Function c as r -> HList (Map Expression as) -> Expression r
 
@@ -149,8 +149,8 @@ instance Num (Expression 'Int) where
 instance IsString (Expression 'String) where
   fromString = Lit
 
-instance IsList (Expression ('Array t)) where
-  type Item (Expression ('Array t)) = Expression t
+instance IsList (Expression ('Array '[i] t)) where
+  type Item (Expression ('Array '[i] t)) = Expression t
   fromList = Arr
   toList = error "toList Expression"
 
