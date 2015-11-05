@@ -85,7 +85,7 @@ parameter value =
      pure (Var name)
 
 boundedVar :: (Monad m, Range a)
-           => Expression a -> Expression a -> MZT m (Expression a)
+              => Expression a -> Expression a -> MZT m (Expression a)
 boundedVar lb ub =
   do name <- getName
      let type' = S.Type S.Var ((S.Bounded `on` reifyExpression) lb ub)
