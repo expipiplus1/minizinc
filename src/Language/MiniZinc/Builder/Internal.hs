@@ -149,8 +149,7 @@ data Expression :: MiniZincType -> * where
   Arr :: [Expression a] -> Expression ('Array i a)
   App :: (ReifyHList (HList (Map Expression as)), c)
          => Function c as r -> HList (Map Expression as) -> Expression r
-  --ArrIndex :: Expression ('Array '[i] e) -> Expression i -> Expression e
-  ArrIndex :: ReifyHList (HList (Map Expression is))
+  ArrIndex :: (ReifyHList (HList (Map Expression is)), EveryElement Index is)
               => Expression ('Array is e) -> HList (Map Expression is)
               -> Expression e
 
@@ -177,6 +176,9 @@ instance Optimizable 'Int
 class Range (a :: MiniZincType)
 instance Range 'Int
 
+class Index (a :: MiniZincType)
+instance Index 'Int
+
 data SolveType where
   Satisfy :: SolveType
   Minimize :: Optimizable a => Expression a -> SolveType
@@ -201,7 +203,10 @@ false = Lit False
 
 infixl 9 !
 
-(!) :: Expression ('Array '[i] e) -> Expression i -> Expression e
+(!) :: (HCall (Map Expression is), ReifyHList (HList (Map Expression is)),
+        EveryElement Index is)
+       => Expression ('Array is e)
+       -> ExpandFunction (Map Expression is) (Expression e)
 (!) = index
 
 --
@@ -257,7 +262,8 @@ call :: (HCall (Map Expression as), ReifyHList (HList (Map Expression as)), c)
         => Function c as r -> ExpandFunction (Map Expression as) (Expression r)
 call f = hCall (App f)
 
-index :: (HCall (Map Expression is), ReifyHList (HList (Map Expression is)))
+index :: (HCall (Map Expression is), ReifyHList (HList (Map Expression is)),
+          EveryElement Index is)
          => Expression ('Array is e)
          -> ExpandFunction (Map Expression is) (Expression e)
 index a = hCall (ArrIndex a)
@@ -278,3 +284,7 @@ type family Map (f :: a -> b) (xs :: [a]) :: [b] where
 type family ExpandFunction (arguments :: [*]) (ret :: *) :: * where
   ExpandFunction '[] r = r
   ExpandFunction (a ': as) r = a -> ExpandFunction as r
+
+type family EveryElement (c :: a -> Constraint) (as :: [a]) :: Constraint where
+  EveryElement c '[] = ()
+  EveryElement c (a ': as) = (c a, EveryElement c as)
