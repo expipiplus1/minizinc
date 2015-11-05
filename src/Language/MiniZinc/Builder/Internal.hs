@@ -149,7 +149,10 @@ data Expression :: MiniZincType -> * where
   Arr :: [Expression a] -> Expression ('Array i a)
   App :: (ReifyHList (HList (Map Expression as)), c)
          => Function c as r -> HList (Map Expression as) -> Expression r
-  ArrIndex :: Expression ('Array '[i] e) -> Expression i -> Expression e
+  --ArrIndex :: Expression ('Array '[i] e) -> Expression i -> Expression e
+  ArrIndex :: ReifyHList (HList (Map Expression is))
+              => Expression ('Array is e) -> HList (Map Expression is)
+              -> Expression e
 
 instance Num (Expression 'Int) where
   (+) = call (Function "'+'" :: '[ 'Int, 'Int] --> 'Int)
@@ -199,7 +202,7 @@ false = Lit False
 infixl 9 !
 
 (!) :: Expression ('Array '[i] e) -> Expression i -> Expression e
-(!) = ArrIndex
+(!) = index
 
 --
 -- Converting it into the unsafe syntax version
@@ -210,8 +213,8 @@ reifyExpression (Lit l) = reifyLit l
 reifyExpression (Var n) = S.Ident n
 reifyExpression (Arr es) = S.ArrayExpr (reifyExpression <$> es)
 reifyExpression (App (Function f) es) = S.CallExpr f (reifyHExpressions es)
-reifyExpression (ArrIndex a i) = S.ArrayIndex (reifyExpression a)
-                                              [reifyExpression i]
+reifyExpression (ArrIndex a is) = S.ArrayIndex (reifyExpression a)
+                                               (reifyHExpressions is)
 
 class ReifyHList a where
   reifyHExpressions :: a -> [S.Expr]
@@ -250,10 +253,14 @@ type as --> r = Function () as r
 type family (==>) (c :: Constraint) (f :: *) :: * where
   c ==> Function c' as r = Function (c, c') as r
 
-
 call :: (HCall (Map Expression as), ReifyHList (HList (Map Expression as)), c)
         => Function c as r -> ExpandFunction (Map Expression as) (Expression r)
 call f = hCall (App f)
+
+index :: (HCall (Map Expression is), ReifyHList (HList (Map Expression is)))
+         => Expression ('Array is e)
+         -> ExpandFunction (Map Expression is) (Expression e)
+index a = hCall (ArrIndex a)
 
 class HCall as where
   hCall :: (HList as -> r) -> ExpandFunction as r
