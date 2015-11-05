@@ -72,7 +72,7 @@ exprPrecDoc _ (LitInt i) = integer i
 exprPrecDoc _ (LitBool b) = if b then "true" else "false"
 exprPrecDoc _ (LitString s) = fromString (show s)
 exprPrecDoc _ (ArrayExpr es) = brackets $ commaSeparated (exprDoc <$> es)
-exprPrecDoc _ (ArrayIndex a is) = exprPrecDoc 800 a <>
+exprPrecDoc _ (ArrayIndex a is) = exprPrecDoc 0 a <>
                                   brackets (commaSeparated (exprDoc <$> is))
 exprPrecDoc p (BinOpExpr op l r) = let p' = opPrecedence op
                                        s = exprPrecDoc p' l <+> binOpDoc op <+>
