@@ -60,6 +60,7 @@ baseTypeDoc (Array indices t) =
   "of" <+> typeDoc t
 baseTypeDoc (Opt baseType) = "opt" <+> baseTypeDoc baseType
 baseTypeDoc (Bounded lb ub) = exprDoc lb <> ".." <> exprDoc ub
+baseTypeDoc (Set t) = "set of" <+> baseTypeDoc t
 
 exprDoc :: Expr -> Doc
 exprDoc = exprPrecDoc maxBound

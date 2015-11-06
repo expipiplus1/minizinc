@@ -20,6 +20,7 @@ module Language.MiniZinc.Builder.Internal
   , parameter
   , boundedVar
   , boundedVarArray
+  , rangeSet
   , constraint
   , solve
   , output
@@ -29,6 +30,7 @@ module Language.MiniZinc.Builder.Internal
   , (>:)
   , show'
   , (!)
+  , to
 
   , true
   , false
@@ -105,6 +107,16 @@ boundedVarArray (ilb, iub) (elb, eub) =
      tellVarDecl (S.VarDecl type' name Nothing)
      pure (Var name)
 
+rangeSet :: Monad m
+            => Expression 'Int -> Expression 'Int -> MZT m (Expression ('Set 'Int))
+rangeSet lb ub =
+  do name <- getName
+     let type' = S.Type S.Par (S.Set S.Int)
+         r = reifyExpression (lb `to` ub)
+     tellVarDecl (S.VarDecl type' name (Just r))
+     pure (Var name)
+
+
 constraint :: Monad m => Expression 'Bool -> MZT m ()
 constraint c = tellConstraint (S.Constraint (reifyExpression c))
 
@@ -124,6 +136,7 @@ data MiniZincType = Bool
                   | Int
                   | String
                   | Array [MiniZincType] MiniZincType
+                  | Set MiniZincType
 
 data Function (c :: Constraint) (arguments :: [MiniZincType])
               (ret :: MiniZincType) = Function Text
@@ -208,6 +221,9 @@ infixl 9 !
        => Expression ('Array is e)
        -> ExpandFunction (Map Expression is) (Expression e)
 (!) = index
+
+to :: (Range a) => Expression a -> Expression a -> Expression ('Set a)
+to = call (Function "'..'" :: Range a ==> '[a,a] --> 'Set a)
 
 --
 -- Converting it into the unsafe syntax version

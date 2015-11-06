@@ -38,6 +38,7 @@ data BaseType = Bool
               | Array [BaseType] Type
               | Opt BaseType
               | Bounded Expr Expr
+              | Set BaseType
 
 data Expr = Ident Text
           | LitInt Integer
