@@ -79,7 +79,7 @@ exprPrecDoc p (BinOpExpr op l r) = let p' = opPrecedence op
                                        s = exprPrecDoc p' l <+> binOpDoc op <+>
                                            exprPrecDoc p' r
                                    in if p' >= p then parens s else s
-exprPrecDoc _ (UnOpExpr op e) = unOpDoc op <> exprDoc e
+exprPrecDoc _ (UnOpExpr op e) = unOpDoc op <> exprPrecDoc 0 e
 exprPrecDoc _ (CallExpr f es) = text f <>
                                 parens (commaSeparated (exprDoc <$> es))
 
