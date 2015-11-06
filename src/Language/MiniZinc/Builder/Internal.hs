@@ -80,7 +80,7 @@ getName =
 -- Functions for creating top level items
 --
 
-parameter :: Monad m => Expression a -> MZT m (Expression a)
+parameter :: Monad m => Expression 'Int -> MZT m (Expression 'Int)
 parameter value =
   do name <- getName
      tellVarDecl (S.VarDecl (S.Type S.Par S.Int) name (Just (reifyExpression value)))
