@@ -8,6 +8,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -47,9 +48,11 @@ import Data.HList(HList(..))
 import GHC.Exts(IsList(..), Constraint)
 import Data.Function(on)
 import Data.Functor.Identity(Identity, runIdentity)
+import Data.Singletons(SingI)
 import Data.String(IsString, fromString)
 import Data.Text.Lazy(Text, pack)
 import qualified Language.MiniZinc.Syntax as S
+import Language.MiniZinc.Builder.Types
 
 --
 -- The monad for constructing minizinc source
@@ -82,10 +85,11 @@ getName =
 -- Functions for creating top level items
 --
 
-parameter :: Monad m => Expression 'Int -> MZT m (Expression 'Int)
+parameter :: SingI a => Monad m => Expression a -> MZT m (Expression a)
 parameter value =
   do name <- getName
-     tellVarDecl (S.VarDecl (S.Type S.Par S.Int) name (Just (reifyExpression value)))
+     let type' = reifyType (demoteMiniZincType value)
+     tellVarDecl (S.VarDecl (S.Type S.Par type') name (Just (reifyExpression value)))
      pure (Var name)
 
 boundedVar :: (Monad m, Range a)
@@ -131,12 +135,6 @@ output o = tellOutput (S.Output (reifyExpression o))
 --
 -- The more typesafe version of the syntax
 --
-
-data MiniZincType = Bool
-                  | Int
-                  | String
-                  | Array [MiniZincType] MiniZincType
-                  | Set MiniZincType
 
 data Function (c :: Constraint) (arguments :: [MiniZincType])
               (ret :: MiniZincType) = Function Text
@@ -228,6 +226,14 @@ to = call (Function "'..'" :: Range a ==> '[a,a] --> 'Set a)
 --
 -- Converting it into the unsafe syntax version
 --
+
+reifyType :: MiniZincType -> S.BaseType
+reifyType t = case t of
+                Bool -> S.Bool
+                Int -> S.Int
+                String -> S.String
+                Array ts e -> S.Array (reifyType <$> ts) (S.Type S.Var (reifyType e)) -- Wrong, need to encode var/par information
+                Set e -> S.Set (reifyType e)
 
 reifyExpression :: Expression a -> S.Expr
 reifyExpression (Lit l) = reifyLit l
