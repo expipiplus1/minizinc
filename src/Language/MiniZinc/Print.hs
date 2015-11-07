@@ -82,13 +82,19 @@ exprPrecDoc p (BinOpExpr op l r) = let p' = opPrecedence op
 exprPrecDoc _ (UnOpExpr op e) = unOpDoc op <> exprPrecDoc 0 e
 exprPrecDoc _ (CallExpr f es) = text f <>
                                 parens (commaSeparated (exprDoc <$> es))
+exprPrecDoc _ (ArrayComp e gs f) = "[" <> exprDoc e <+> "|"
+                                   <+> commaSeparated (generatorDoc <$> gs)
+                                   <+> "where" <+> exprDoc f <> "]"
 
 commaSeparated :: [Doc] -> Doc
-commaSeparated = mconcat . intersperse ","
+commaSeparated = mconcat . intersperse ", "
 
 binOpDoc :: BinOp -> Doc
 binOpDoc = text . fst . binOpInfo
 
 unOpDoc :: UnOp -> Doc
 unOpDoc = text . unOpName
+
+generatorDoc :: Generator -> Doc
+generatorDoc (InSet is e) = commaSeparated (text <$> is) <+> "in" <+> exprDoc e
 

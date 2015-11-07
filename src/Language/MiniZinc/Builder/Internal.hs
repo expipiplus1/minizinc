@@ -26,12 +26,18 @@ module Language.MiniZinc.Builder.Internal
   , solve
   , output
 
+  , comp
+  , from
+  , guard
+
   , (/=:)
   , (==:)
   , (>:)
   , show'
   , (!)
   , to
+  , conjoin
+  , forall
 
   , true
   , false
@@ -42,8 +48,10 @@ module Language.MiniZinc.Builder.Internal
   , MiniZincType(..)
   ) where
 
-import Control.Monad.RWS.Strict
-import Data.DList as D
+import Control.Monad.RWS.Strict (RWST(..), execRWST, get, gets, modify', lift
+                                , put, tell)
+import Data.DList as D (DList, singleton)
+import Data.Monoid((<>))
 import Data.HList(HList(..))
 import GHC.Exts(IsList(..), Constraint)
 import Data.Function(on)
@@ -68,14 +76,14 @@ runMZ = runIdentity . runMZT
 runMZT :: Monad m => MZT m () -> m S.Model
 runMZT mz =
   do (_, is) <- execRWST mz () initialMZState
-     pure (S.Model (D.toList is))
+     pure (S.Model (toList is))
 
 data MZState = MZState {nextId :: Int}
 
 initialMZState :: MZState
 initialMZState = MZState {nextId = 0}
 
-getName :: Monad m => MZT m Text
+getName :: (Monad m, Monoid w) => RWST r w MZState m Text
 getName =
   do i <- gets nextId
      modify' (\s -> s {nextId = i+1})
@@ -120,7 +128,6 @@ rangeSet lb ub =
      tellVarDecl (S.VarDecl type' name (Just r))
      pure (Var name)
 
-
 constraint :: Monad m => Expression 'Bool -> MZT m ()
 constraint c = tellConstraint (S.Constraint (reifyExpression c))
 
@@ -163,6 +170,8 @@ data Expression :: MiniZincType -> * where
   ArrIndex :: (ReifyHList (HList (Map Expression is)), EveryElement Index is)
               => Expression ('Array is e) -> HList (Map Expression is)
               -> Expression e
+  ArrComp :: [Generator] -> Expression 'Bool -> Expression a
+             -> Expression ('Array '[ 'Int] a)
 
 instance Num (Expression 'Int) where
   (+) = call (Function "'+'" :: '[ 'Int, 'Int] --> 'Int)
@@ -205,12 +214,22 @@ infix 4 ==:, /=:, >:
 (==:) = call (Function "'=='" :: '[a,a] --> 'Bool)
 (>:) = call (Function "'>'" :: '[a,a] --> 'Bool)
 
+(/\) :: Expression 'Bool -> Expression 'Bool -> Expression 'Bool
+(/\) = call (Function "'/\\'" :: '[ 'Bool, 'Bool] --> 'Bool)
+
 show' :: Range a => Expression a -> Expression 'String
 show' = call (Function "show" :: '[a] --> 'String)
 
 true, false :: Expression 'Bool
 true = Lit True
 false = Lit False
+
+conjoin :: Foldable f => f (Expression 'Bool) -> Expression 'Bool
+conjoin xs | null xs = true
+           | otherwise = foldl1 (/\) xs
+
+forall :: Expression ('Array a 'Bool) -> Expression 'Bool
+forall = call (Function "forall" :: '[ 'Array a 'Bool] --> 'Bool)
 
 infixl 9 !
 
@@ -222,6 +241,34 @@ infixl 9 !
 
 to :: (Range a) => Expression a -> Expression a -> Expression ('Set a)
 to = call (Function "'..'" :: Range a ==> '[a,a] --> 'Set a)
+
+--
+-- Comprehensions
+--
+
+data Generator = forall a. In Text (Expression ('Set a))
+
+type Filter = Expression 'Bool
+
+type CompT = RWST () (DList Generator, DList Filter) MZState
+
+type Comp = CompT Identity
+
+comp :: Monad m => CompT m (Expression a) -> MZT m (Expression ('Array '[ 'Int] a))
+comp c =
+  do s <- get
+     (e, s', (gs, fs)) <- lift $ runRWST c () s
+     put s'
+     pure (ArrComp (toList gs) (conjoin fs) e)
+
+from :: Expression ('Set a) -> Comp (Expression a)
+from s =
+  do n <- getName
+     tell (singleton (n `In` s), mempty)
+     pure (Var n)
+
+guard :: Expression 'Bool -> Comp ()
+guard e = tell (mempty, singleton e)
 
 --
 -- Converting it into the unsafe syntax version
@@ -242,6 +289,12 @@ reifyExpression (Arr es) = S.ArrayExpr (reifyExpression <$> es)
 reifyExpression (App (Function f) es) = S.CallExpr f (reifyHExpressions es)
 reifyExpression (ArrIndex a is) = S.ArrayIndex (reifyExpression a)
                                                (reifyHExpressions is)
+reifyExpression (ArrComp gs f e) = S.ArrayComp (reifyExpression e)
+                                               (reifyGenerator <$> gs)
+                                               (reifyExpression f)
+
+reifyGenerator :: Generator -> S.Generator
+reifyGenerator (In i e) = S.InSet [i] (reifyExpression e)
 
 class ReifyHList a where
   reifyHExpressions :: a -> [S.Expr]

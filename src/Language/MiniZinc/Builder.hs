@@ -12,12 +12,18 @@ module Language.MiniZinc.Builder
   , solve
   , output
 
+  , comp
+  , from
+  , guard
+
   , (/=:)
   , (==:)
   , (>:)
   , show'
   , (!)
   , to
+  , conjoin
+  , forall
 
   , true
   , false

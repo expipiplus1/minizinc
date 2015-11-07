@@ -49,6 +49,7 @@ data Expr = Ident Text
           | BinOpExpr BinOp Expr Expr
           | UnOpExpr UnOp Expr
           | CallExpr Text [Expr]
+          | ArrayComp Expr [Generator] Expr
 
 data BinOp = BiImplication
            | Implies
@@ -78,6 +79,8 @@ data BinOp = BiImplication
            | Div
            | Mod
            | IdentOp Text
+
+data Generator = InSet [Text] Expr
 
 -- | binOpInfo returns the text representation and precedence of binary
 -- operators according to section 7.3.2 of
